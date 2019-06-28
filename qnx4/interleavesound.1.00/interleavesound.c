@@ -52,7 +52,7 @@
 #define SCHEDULER "schedule"
 #define ERRLOG "errlog"
 
-void u_read_uconts(void);
+// void u_read_uconts(void);
 
 #define CONTROL_NAME "control_program"
 #define TASK_NAMES "echo_data","iqwrite","rawacfwrite","fitacfwrite"
@@ -347,7 +347,7 @@ int main(int argc,char *argv[]) {
                       intsc,intus,hr,mt,sc,us);
       ErrLog(errlog,progname,logtxt);
 
-      u_read_uconts();
+      // u_read_uconts();
 
       ErrLog(errlog,progname,"Setting beam.");
 
