@@ -47,13 +47,8 @@
  
 */
 
-#define UCONT_NAME "ucont_moni"
-
 #define SCHEDULER "schedule"
 #define ERRLOG "errlog"
-
-// void u_read_uconts(void);
-
 #define CONTROL_NAME "control_program"
 #define TASK_NAMES "echo_data","iqwrite","rawacfwrite","fitacfwrite"
 
@@ -61,8 +56,6 @@ char cmdlne[1024];
 char progid[80]={"$Id: interleavesound.c,v 1.0 2019/06/14 egthomas Exp $"};
 char progname[256];
 struct TaskID *errlog;
-
-// pid_t uucont_proxy;
 
 char *tasklist[]=
  { TASK_NAMES,
@@ -116,15 +109,13 @@ int main(int argc,char *argv[]) {
   char logtxt[1024];
 
   int n;
-  pid_t sid;
   int exitpoll=0;
 
-  int scnsc=120;
+  int scnsc=60;
   int scnus=0;
   int skip;
   int cnt=0;
 
-  unsigned char fast=0;
   unsigned char discretion=0;
 
   /* ---------- Beam sequence for interleavedscan ---------- */
@@ -178,9 +169,10 @@ int main(int argc,char *argv[]) {
   int sounder_beams_total=8, odd_beams=0;
   int sounder_freq;
   int sounder_beam_loop=1;
-  int normal_intt=6;
-  int fast_intt=3;
-  int sounder_intt=2;
+  int fast_intt_sc=3;
+  int fast_intt_us=0;
+  int sounder_intt_sc=2;
+  int sounder_intt_us=0;
   float sounder_time, time_needed=1.25;
   // sounder.dat is at SD_SND_TABLE
   sprintf(snd_filename, "%s", getenv("SD_SND_TABLE"));
@@ -196,10 +188,6 @@ int main(int argc,char *argv[]) {
 
   /* ------------------------------------------------------- */
 
-
-  // if ((uucont_proxy=SiteInitProxy(UCONT_NAME))==-1) {
-  //   perror("cannot attach proxy");
-  // }
 
   strcpy(cmdlne,argv[0]);
   for (n=1;n<argc;n++) {
@@ -219,18 +207,18 @@ int main(int argc,char *argv[]) {
                   &dmpinc,&nmpinc,
                   &frqrng,&xcnt);
 
-  // For 2-min normal scan
-  cp=195; /* interleavesound */
-  intsc=normal_intt;
-  intus=0;
-  mppul=8;
-  mplgs=23;
-  mpinc=1500;
-  dmpinc=1500;
-  nrang=75;
-  rsep=45;
-  txpl=300; /* recalculated below with rsep */ 
-  frang=180;
+  // For 1-min normal scan
+  cp     = 197;
+  intsc  = fast_intt_sc;
+  intus  = fast_intt_us;
+  mppul  = 8;
+  mplgs  = 23;
+  mpinc  = 1500;
+  dmpinc = 1500;
+  nrang  = 75;
+  rsep   = 45;
+  txpl   = 300; /* recalculated below with rsep */
+  frang  = 180;
 
   SiteStart();
 
@@ -256,8 +244,6 @@ int main(int argc,char *argv[]) {
   OptionAdd(&opt, "xcf", 'i', &xcnt);
   OptionAdd(&opt, "frqrng", 'i', &frqrng);
 
-  OptionAdd(&opt, "fast", 'x', &fast);
-
   arg=OptionProcess(1,argc,argv,&opt,NULL);
 
   if (sname==NULL) sname=sdname;
@@ -270,15 +256,6 @@ int main(int argc,char *argv[]) {
 
   SiteSetupHardware();
 
-  /* the parameters are set for fastscan */
-  if (fast) {
-     cp=197;  /* fast interleavesound */
-     scnsc=60;
-     scnus=0;
-     intsc=fast_intt;
-     intus=0;
-  }
-
   // set a negative CPID for discretionary time
   if ( discretion) cp= -cp;
 
@@ -286,8 +263,7 @@ int main(int argc,char *argv[]) {
   txpl=(rsep*20)/3;
 
   // set the program name
-  if (fast) sprintf(progname,"interleavesound (fast)");
-  else sprintf(progname,"interleavesound");
+  sprintf(progname,"interleavesound (fast)");
 
   OpsFitACFStart();
 
@@ -346,8 +322,6 @@ int main(int argc,char *argv[]) {
       sprintf(logtxt,"Integrating beam:%d intt:%ds.%dus (%d:%d:%d:%d)",bmnum,
                       intsc,intus,hr,mt,sc,us);
       ErrLog(errlog,progname,logtxt);
-
-      // u_read_uconts();
 
       ErrLog(errlog,progname,"Setting beam.");
 
@@ -440,7 +414,8 @@ int main(int argc,char *argv[]) {
 
       sounder_beam_loop = ( sounder_time-(float)sounder_intt > time_needed );
       while (sounder_beam_loop) {
-        intsc=sounder_intt;
+        intsc=sounder_intt_sc;
+        intus=sounder_intt_us;
 
         /* set the beam */
         bmnum=sounder_beams[sounder_beam_count]+odd_beams;
@@ -527,8 +502,8 @@ int main(int argc,char *argv[]) {
       }
 
       /* now wait for the next interleavescan */
-      intsc=normal_intt;
-      if (fast) intsc=fast_intt;
+      intsc=fast_intt_sc;
+      intus=fast_intt_us;
       OpsWaitBoundary(scnsc,scnus);
     }
 
@@ -542,13 +517,6 @@ int main(int argc,char *argv[]) {
   return 0;
 } 
 
-/* Sends a proxy message to the microcontroller monitoring
-   task every beam.
-*/
-
-// void u_read_uconts() {
-//   if (uucont_proxy != 0) Trigger(uucont_proxy);
-// }
 
 /********************** function write_sounding_record_new() ************************/
 /* changed the data structure */
